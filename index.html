@@ -88,6 +88,26 @@ button {
   background: #ddd;
   color: #111;
 }
+
+.history-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.day {
+  background: #f1f3f5;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.match {
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 8px;
+}
 </style>
 </head>
 
@@ -98,21 +118,36 @@ button {
   <p>Suivi des matchs</p>
 </header>
 
-<div class="container" id="psList"></div>
+<div class="container">
+
+  <div id="psList"></div>
+
+  <div class="card">
+
+    <div class="history-title">
+      📊 Historique des matchs
+    </div>
+
+    <div id="history">
+      Aucun match enregistré.
+    </div>
+
+  </div>
+
+</div>
 
 <script>
 
 const consoles = ["PS1", "PS2", "PS3"];
 
 let data =
-  JSON.parse(localStorage.getItem("avemManagerData")) || {};
+  JSON.parse(
+    localStorage.getItem("avemManagerData")
+  ) || {};
 
-function saveData() {
-  localStorage.setItem(
-    "avemManagerData",
-    JSON.stringify(data)
-  );
-}
+/* ================================
+   PRÉPARATION DES DONNÉES
+================================ */
 
 function prepareData() {
 
@@ -122,15 +157,38 @@ function prepareData() {
 
       data[ps] = {
         count: 0,
-        playing: false
+        playing: false,
+        matches: []
       };
 
+    }
+
+    if (!data[ps].matches) {
+      data[ps].matches = [];
     }
 
   });
 
   saveData();
+
 }
+
+/* ================================
+   SAUVEGARDE
+================================ */
+
+function saveData() {
+
+  localStorage.setItem(
+    "avemManagerData",
+    JSON.stringify(data)
+  );
+
+}
+
+/* ================================
+   AFFICHAGE DES PS
+================================ */
 
 function render() {
 
@@ -187,6 +245,10 @@ function render() {
 
 }
 
+/* ================================
+   DÉMARRER UN MATCH
+================================ */
+
 function startMatch(ps) {
 
   if (data[ps].playing) {
@@ -195,10 +257,18 @@ function startMatch(ps) {
 
   data[ps].playing = true;
 
+  data[ps].startTime =
+    new Date().toISOString();
+
   saveData();
+
   render();
 
 }
+
+/* ================================
+   TERMINER UN MATCH
+================================ */
 
 function finishMatch(ps) {
 
@@ -206,16 +276,126 @@ function finishMatch(ps) {
     return;
   }
 
+  const startTime =
+    new Date(data[ps].startTime);
+
+  const finishTime =
+    new Date();
+
+  const match = {
+
+    start:
+      startTime.toLocaleTimeString(
+        "fr-FR"
+      ),
+
+    end:
+      finishTime.toLocaleTimeString(
+        "fr-FR"
+      ),
+
+    date:
+      finishTime.toLocaleDateString(
+        "fr-FR"
+      )
+
+  };
+
   data[ps].count++;
+
   data[ps].playing = false;
 
+  data[ps].matches.push(match);
+
+  data[ps].startTime = null;
+
   saveData();
+
   render();
+
+  renderHistory();
 
 }
 
+/* ================================
+   HISTORIQUE
+================================ */
+
+function renderHistory() {
+
+  const history =
+    document.getElementById("history");
+
+  let html = "";
+
+  let found = false;
+
+  consoles.forEach(function(ps) {
+
+    if (
+      data[ps].matches &&
+      data[ps].matches.length > 0
+    ) {
+
+      found = true;
+
+      html += `
+        <div class="day">
+
+          <strong>🎮 ${ps}</strong>
+      `;
+
+      data[ps].matches
+        .slice()
+        .reverse()
+        .forEach(function(match) {
+
+          html += `
+
+            <div class="match">
+
+              📅 ${match.date}<br>
+
+              🟢 Début :
+              ${match.start}<br>
+
+              🔴 Fin :
+              ${match.end}
+
+            </div>
+
+          `;
+
+        });
+
+      html += `</div>`;
+
+    }
+
+  });
+
+  if (!found) {
+
+    history.innerHTML =
+      "Aucun match enregistré.";
+
+    return;
+
+  }
+
+  history.innerHTML = html;
+
+}
+
+/* ================================
+   LANCEMENT
+================================ */
+
 prepareData();
+
 render();
+
+renderHistory();
 
 </script>
 
